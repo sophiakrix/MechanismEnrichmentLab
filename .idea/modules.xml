@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/MechanismEnrichmentLab.iml" filepath="$PROJECT_DIR$/.idea/MechanismEnrichmentLab.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../clepp/.idea/clepp.iml" filepath="$PROJECT_DIR$/../clepp/.idea/clepp.iml" />
     </modules>
   </component>
 </project>

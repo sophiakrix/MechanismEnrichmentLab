@@ -40,6 +40,8 @@ def construct_graph(file):
 
     return G
 
+# TODO: create function for mapping ppi file to dgxp file
+
 """
 Randomly assigns labels of [-1,0,1] to nodes in a graph
 Labels:
@@ -98,11 +100,11 @@ def count_concordance(graph, source):
     for target, path_nodes in shortest_path(graph, source).items():
 
         # check if node labels of source and target are the same
-        if G.nodes[source]['label'] * G.nodes[target]['label'] is 1:
+        if graph.nodes[source]['label'] * graph.nodes[target]['label'] is 1:
             same_label = True
 
         # multiply the edge labels
-        edge_label = [G[path_nodes[i]][path_nodes[i + 1]]['relation'] * G[path_nodes[i]][path_nodes[i + 1]]['relation']
+        edge_label = [graph[path_nodes[i]][path_nodes[i + 1]]['relation'] * graph[path_nodes[i]][path_nodes[i + 1]]['relation']
                       for i in range(len(path_nodes) - 1)]
 
         # edge_label = 1
@@ -121,7 +123,7 @@ def count_concordance(graph, source):
             nodes_dic['non-concordant'].append(target)
 
         # no change node
-        if G.nodes[source]['label'] is 0 and G.nodes[target]['label'] is 0:
+        if graph.nodes[source]['label'] is 0 and graph.nodes[target]['label'] is 0:
             nodes_dic['no change'].append(target)
 
     return nodes_dic
@@ -149,7 +151,7 @@ def nodes_dictionary(graph):
         dic[node] = count_concordance(graph, node)
 
         # shortest path nodes
-        dic[node]['shortest_path'] = list(shortest_path(graph, node).keys()
+        dic[node]['shortest_path'] = list(shortest_path(graph, node).keys())
 
     return dic
 
@@ -170,10 +172,9 @@ def calculate_concordance(graph):
 
     #assert 0 <= p and p <= 1, "p must be within [0,1]"
 
-    if hyp_node not in graph.nodes():
-        raise ValueError(f"The node {hyp_node} is not in the graph.")
-
     for hyp_node in graph.nodes():
+        if hyp_node not in graph.nodes():
+            raise ValueError(f"The node {hyp_node} is not in the graph.")
         # n is number of trials
         n = len(shortest_path(graph, hyp_node).keys())
         # k is number of successful predictions
@@ -185,8 +186,7 @@ def calculate_concordance(graph):
         concordance_dic[hyp_node]['concordant'] = concordance
 
     # correction for multiple testing
-    reject, pvals_corrected = multitest.multipletests(concordance_dic.values()),alpha=0.05,method='bonferroni')
-    corrected_concordance_dic = {}
+    reject, pvals_corrected = multitest.multipletests(concordance_dic.values(),alpha=0.05,method='bonferroni')
     for node, pval in zip(graph.nodes(),pvals_corrected):
         concordance_dic[node]['non-concordant'] = pval
 
@@ -220,10 +220,7 @@ def write_concordance_csv(graph, csv_output):
 
     df_.to_csv(csv_output)
 
-@click.command()
-@click.option('--input', help='The input csv file with nodes and interaction.')
-@click.option('--output', help='The output path for the concordance csv file.')
-
+"""
 
 if __name__ == '__main__':
 
@@ -247,3 +244,4 @@ if __name__ == '__main__':
     print(f"The concordance of each HYP node of the graph is as follows: ")
 
     write_concordance_csv(g,csv_output)
+"""
