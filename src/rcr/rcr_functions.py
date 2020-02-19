@@ -11,7 +11,7 @@ from .constants import RELATION, COLUMNS, SEPARATOR, LABEL, CONCORDANCE, CONCORD
     SHORTESTPATH, PVAL, PVALCORRECTED, NODE, PROBABILITY, DGXPCOLUMNS, THRESHOLD
 
 
-def construct_graph_from_ppi(ppi_file: str, sep=SEPARATOR, ppi_columns: List[str, str, str] = COLUMNS):
+def construct_graph_from_ppi(ppi_file: str, sep=SEPARATOR, ppi_columns = COLUMNS):
     """ Constructs a graph from a given PPI file.
 
     :param ppi_file: PPI file
@@ -19,6 +19,10 @@ def construct_graph_from_ppi(ppi_file: str, sep=SEPARATOR, ppi_columns: List[str
     :return: NetworkX graph
     """
     df_ppi = pd.read_csv(ppi_file, sep=sep, header=None, names=ppi_columns)
+    df_ppi.columns = COLUMNS
+
+    df_ppi.Protein1 = df_ppi['Protein1'].str.lower()
+    df_ppi.Protein2 = df_ppi['Protein2'].str.lower()
 
     df_interactions = df_ppi.replace("in-complex-with", +1)
     df_interactions = df_interactions.replace("controls-expression-of", -1)
@@ -43,7 +47,7 @@ def construct_graph_from_ppi(ppi_file: str, sep=SEPARATOR, ppi_columns: List[str
     return G
 
 
-def filter_dgxp(dgxp_file: str, sep=SEPARATOR, dgxp_columns: List[str, str, str] = DGXPCOLUMNS,
+def filter_dgxp(dgxp_file: str, sep=SEPARATOR, dgxp_columns = DGXPCOLUMNS,
                 threshold: float = THRESHOLD):
     """
     Filters a DGXP file for fold-change significant genes.
@@ -56,21 +60,29 @@ def filter_dgxp(dgxp_file: str, sep=SEPARATOR, dgxp_columns: List[str, str, str]
     # node attributes
 
     df_dgxp = pd.read_csv(dgxp_file, sep=sep, header=None, names=dgxp_columns)
+    # select only necessary columns
+    df_dgxp = df[['Gene.symbol', 'logFC', 'adj.P.Val']].copy()
+    # change column names accordingly
+    df_dgxp.columns = ["gene", "fold-change", "p-value"]
+    df_dgxp = df_dgxp.dropna()
+    df_dgxp.gene = df_dgxp['gene'].str.lower()
+
+    # filter dgxp
 
     # filter nodes with p-value < 0.05
-    df_dgxp_pval_filtered = df_dgxp.loc[df_dgxp[DGXPCOLUMNS[2]] < 0.05]
+    df_dgxp_pval_filtered = df_dgxp.loc[df_dgxp[DGXPCOLUMNS[2]] < 0.1]
 
     # filter nodes with threshold (given by user)
     df_dgxp_thr_filtered = df_dgxp_pval_filtered.loc[abs(df_dgxp_pval_filtered[DGXPCOLUMNS[1]]) > threshold]
 
     # set fold change labels from float to +1 or -1
-    df_dgxp_thr_filtered.loc[df_dgxp_thr_filtered.DGXPCOLUMNS[1] > 0] = +1
-    df_dgxp_thr_filtered.loc[df_dgxp_thr_filtered.DGXPCOLUMNs[1] < 0] = -1
+    df_dgxp_thr_filtered['fold-change'].loc[(df_dgxp_thr_filtered[DGXPCOLUMNS[1]] > 0)] = +1
+    df_dgxp_thr_filtered['fold-change'].loc[(df_dgxp_thr_filtered[DGXPCOLUMNS[1]] < 0)] = -1
 
     return df_dgxp_thr_filtered
 
 
-def set_node_label(graph, dgxp_file: str, sep=SEPARATOR, dgxp_columns: List[str, str, str] = DGXPCOLUMNS,
+def set_node_label(graph, dgxp_file: str, sep=SEPARATOR, dgxp_columns = DGXPCOLUMNS,
                    threshold: float = THRESHOLD):
     """
     Sets the attribute LABEL of nodes according to the fold-change to +1 or -1.
@@ -82,19 +94,26 @@ def set_node_label(graph, dgxp_file: str, sep=SEPARATOR, dgxp_columns: List[str,
     :param graph: NetworkX graph
     """
     df = filter_dgxp(dgxp_file, sep, dgxp_columns, threshold)
-    nodes = df.loc[DGXPCOLUMNS[0]]
-    fold_changes = df.loc[DGXPCOLUMNS[1]]
-    node_label_dic = {node: label for (node, label) in zip(nodes, fold_changes)}
 
-    nx.set_node_attributes(graph, node_label_dic, name=LABEL)
+    if prot1 in list(df['gene']):
+        index = df[df.gene == prot1].index[0]
+        G.nodes[prot1][LABEL] = df.loc[index, ['fold-change']]
+        # print(df_dgxp.loc[index, 'fold-change'])
+        print(f"Label for {prot1} is now {df.loc[index, 'fold-change']}")
+
+    #nodes = df.loc[DGXPCOLUMNS[0]]
+    #fold_changes = df.loc[DGXPCOLUMNS[1]]
+    #node_label_dic = {node: label for (node, label) in zip(nodes, fold_changes)}
+
+    #nx.set_node_attributes(graph, node_label_dic, name=LABEL)
 
     for node in graph.nodes():
         if graph[node][LABEL] is None:
             raise KeyError(f"The node {node} has not been labeled.")
 
 
-def construct_graph(ppi_file: str, dgxp_file: str, sep=SEPARATOR, ppi_columns: List[str, str, str] = COLUMNS,
-                    dgxp_columns: List[str, str, str] = DGXPCOLUMNS, threshold: float = THRESHOLD):
+def construct_graph(ppi_file: str, dgxp_file: str, sep=SEPARATOR, ppi_columns= COLUMNS,
+                    dgxp_columns = DGXPCOLUMNS, threshold: float = THRESHOLD):
     """
     Constructs a NetworkX graph.
         :param ppi_file: tsv file about PPI
@@ -266,12 +285,12 @@ def calculate_concordance(graph, p: float = PROBABILITY):
         bin_coeff = special.binom(n, k)
         concordance = bin_coeff * (p ** k) * (1 - p) ** (n - k)
         concordance_dic[hyp_node] = {}
-        concordance_dic[hyp_node][CONCORDANT] = concordance
+        concordance_dic[hyp_node][PVAL] = concordance
 
     # correction for multiple testing
     reject, pvals_corrected = multitest.multipletests(concordance_dic.values(), alpha=0.05, method='bonferroni')
     for node, pval in zip(graph.nodes(), pvals_corrected):
-        concordance_dic[node][NONCONCORDANT] = pval
+        concordance_dic[node][PVALCORRECTED] = pval
 
     return concordance_dic
 

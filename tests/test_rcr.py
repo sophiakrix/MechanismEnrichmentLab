@@ -1,7 +1,7 @@
 import unittest
-
+import os
 import src.rcr.rcr_functions as rcr
-from src.rcr.constants import PPIFILE, DGXPFILE, RELATION, CONCORDANT, NONCONCORDANT, NOCHANGE
+from src.rcr.constants import PPIFILE, DGXPFILE, RELATION, CONCORDANT, NONCONCORDANT, NOCHANGE, PVAL, PVALCORRECTED, TESTOUTPUT, LABEL
 
 
 class TestRCR(unittest.TestCase):
@@ -37,59 +37,99 @@ class TestRCR(unittest.TestCase):
                 msg=f'The node {node} is not of type str. Please change to type str.')
 
 
-def test_filter_dgxp(self):
-    df = rcr.filter_dgxp(DGXPFILE)
+    def test_filter_dgxp(self):
+        df = rcr.filter_dgxp(DGXPFILE)
 
-    # check if df not emtpy
-    self.assertFalse(df.empty, msg='The dgpx file is empty or it could not be loaded.')
+        # check if df not emtpy
+        self.assertFalse(df.empty, msg='The dgpx file is empty or it could not be loaded.')
 
-    # check if column 'interaction' has label in [-1,+1]
-    for index, row in df.iterrows():
-        self.assertIn(
-            row[1],
-            [-1, +1],
-            msg=f'The gene at index {index} does not have a fold-change within [-1, +1].')
-
-
-def test_set_node_label(self):
-    graph = rcr.construct_graph_from_ppi(PPIFILE)
-
-    rcr.set_node_label(graph, DGXPFILE)
-
-    self.assertTrue(
-        graph[node][LABEL],
-        [-1, +1],
-        msg=f'The attribute LABEL of node {node} is not within [-1,+1].')
+        # check if column 'interaction' has label in [-1,+1]
+        for index, row in df.iterrows():
+            self.assertIn(
+                row[1],
+                [-1, +1],
+                msg=f'The gene at index {index} does not have a fold-change within [-1, +1].')
 
 
-def test_count_concordance(self):
-    graph = rcr.construct_graph_from_ppi(PPIFILE)
+    def test_set_node_label(self):
+        graph = rcr.construct_graph_from_ppi(
+            ppi_file=PPIFILE
+        )
 
-    for node in graph.nodes():
-        nodes_dic = rcr.count_concordance(graph, node)
+        rcr.set_node_label(graph, DGXPFILE)
+
+        for node in graph.nodes():
+            self.assertTrue(
+                graph[node][LABEL],
+                [-1, +1],
+                msg=f'The attribute LABEL of node {node} is not within [-1,+1].')
+
+
+    def test_count_concordance(self):
+        graph = rcr.construct_graph_from_ppi(PPIFILE)
+
+        for node in graph.nodes():
+            nodes_dic = rcr.count_concordance(graph, node)
+
+            # check if dic is empty
+            self.assertTrue(nodes_dic, msg=f'The dictionary with concordant nodes of node {node} is empty.')
+
+            # check if node label CONCORDANCE is within -1, +1
+            self.assertTrue(
+                nodes_dic[CONCORDANT],
+                +1,
+                msg=f'The attribute CONCORDANT of node {node} is not +1.')
+
+            self.assertTrue(
+                nodes_dic[NONCONCORDANT],
+                -1,
+                msg=f'The attribute NONCONCORDANT of node {node} is not -1.')
+
+            self.assertTrue(
+                nodes_dic[NOCHANGE],
+                0,
+                msg=f'The attribute NOCHANGE of node {node} is not 0.')
+
+    def test_calculate_concordance(self):
+        graph = rcr.construct_graph_from_ppi(PPIFILE)
+
+        concordance_dic = rcr.calculate_concordance(graph)
 
         # check if dic is empty
-        self.assertTrue(nodes_dic, msg=f'The dictionary with concordance values of node {node} is empty.')
+        for node in graph.nodes():
+            self.assertTrue(
+                concordance_dic,
+                msg=f'The dictionary with concordance values of node {node} is empty.')
 
-        # check if node label CONCORDANCE is within -1, +1
-        self.assertTrue(
-            nodes_dic[CONCORDANT],
-            +1,
-            msg=f'The attribute CONCORDANT of node {node} is not +1.')
+        # check if node label PVAL is 0 <= PVAL <= 1
+        for node in graph.nodes():
 
-        self.assertTrue(
-            nodes_dic[NONCONCORDANT],
-            -1,
-            msg=f'The attribute NONCONCORDANT of node {node} is not -1.')
+            self.assertIsInstance(
+                concordance_dic[node][PVAL],
+                float,
+                msg=f'The attribute PVAL of node {node} is not of type float.')
 
-        self.assertTrue(
-            nodes_dic[NOCHANGE],
-            0,
-            msg=f'The attribute NOCHANGE of node {node} is not 0.')
+            self.assertIsInstance(
+                concordance_dic[node][PVALCORRECTED],
+                float,
+                msg=f'The attribute PVALCORRECTED of node {node} is not of type float.')
 
-def test_calculate_concordance(self):
-    graph = rcr.construct_graph_from_ppi(PPIFILE)
-    
+            self.assertTrue(
+                0 <= concordance_dic[node][PVAL] <= 1,
+                msg=f'The attribute PVAL of node {node} is not within [0,1].')
+
+            self.assertTrue(
+                0 <= concordance_dic[node][PVAL] <= 1,
+                msg=f'The attribute PVALCORRECTED of node {node} is not within [0,1].')
+
+    def test_write_concordance_csv(self):
+        graph = rcr.construct_graph_from_ppi(PPIFILE)
+
+        rcr.write_concordance_csv(graph, TESTOUTPUT)
+
+        self.asssertTrue(
+            os.path.isfile(TESTOUTPUT),
+            msg='The file could not be created.')
 
 
 
