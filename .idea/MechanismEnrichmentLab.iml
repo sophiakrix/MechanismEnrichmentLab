@@ -5,6 +5,7 @@
     <orderEntry type="jdk" jdkName="Python 3.7 (py3)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="clepp" />
+    <orderEntry type="module" module-name="neurommsig-lab-2020-Feb-18" />
   </component>
   <component name="TestRunnerService">
     <option name="PROJECT_TEST_RUNNER" value="Unittests" />

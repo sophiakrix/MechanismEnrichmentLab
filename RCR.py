@@ -227,7 +227,7 @@ def write_concordance_csv(graph, csv_output):
 
 if __name__ == '__main__':
 
-    file = "/Users/sophiakrix/git/MechanismEnrichmentLab/NOTCH1_Intracellular.txt"
+    file = "/Users/sophiakrix/git/MechanismEnrichmentLab/example.txt"
     # Create parser
     #parser = argparse.ArgumentParser(description='csv file with Protein1, interaction and Protein2 information')
 
