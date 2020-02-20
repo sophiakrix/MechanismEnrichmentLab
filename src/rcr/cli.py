@@ -6,20 +6,21 @@ import click
 import os
 import networkx as nx
 from .rcr_functions import write_concordance_csv, construct_graph
-from .constants import HERE, DIRECTORY
+from .constants import RCR_DIR, DIRECTORY
 from typing import List
+from src.rcr.constants import *
 
 ppi_option = click.option(
     '--ppi',
     help="Path to tab-separated PPI file",
-    type=click.Path(file_okay=True, dir_okay=False, exists=True),
-    required=True
+    type=click.Path(file_okay=True, dir_okay=False, exists=True)
 )
+
 
 dgxp_option = click.option(
     '--dgxp',
     help="Path to tab-separated differential gene expression file",
-    type=float
+    type=click.Path(file_okay=True, dir_okay=False, exists=True)
 )
 
 probability_option = click.option(
@@ -102,20 +103,18 @@ def create_graph(ppi: str):
 @threshold_option
 def write_ppi_to_csv(ppi: str, dgxp: str, p: float, sep: str, ppi_columns: List[str, str, str], dgxp_columns: List[str, str, str], threshold: float):
     """ Write the results of concordant nodes and p values to a csv file. """
-    here = HERE
-    print(f"We want to create a folder here: {here}.")
-    directory = DIRECTORY
+
+    # TODO take from constants
+    print(f"We want to create a folder here: {PRO}.")
     print(f"The folder is being created here: {directory}.")
 
-    output = os.path.join(directory, f'{ppi}.csv')
-    #output = os.path.join(os.getcwd(), ppi+'.csv')
 
-    try:
-        os.mkdir(directory)
-    except OSError:
-        click.echo(f"Creation of the directory {directory} failed")
-    else:
-        click.echo(f"Successfully created the directory {directory}")
+
+    # imaging that output is an option alreadz, check if has been given by the user, if so, use it
+    # if not
+    # Check if user has given this option because it is now not mandatory '(ppi
+    #  split and get the last slash out of the path. strip the format .strip('txt)
+    #  OUTPUT_from_constnats.format(NAME)
 
     graph = construct_graph(ppi, dgxp, sep, ppi_columns, dgxp_columns, threshold)
 
