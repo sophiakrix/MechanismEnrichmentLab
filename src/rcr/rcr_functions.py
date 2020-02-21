@@ -9,15 +9,12 @@ from statsmodels.stats import multitest
 from .constants import *
 
 
-def construct_graph_from_ppi(ppi_file: str, sep=SEPARATOR, ppi_columns=COLUMNS):
-    """ Constructs a graph from a given PPI file.
+def read_ppi_file(ppi_file: str = PPI_FILE, sep: str = SEPARATOR, ppi_columns=COLUMNS):
+    """Reads in ppi file."""
 
-    :param ppi_file: PPI file
-    :param ppi_columns: column names for PPI file
-    :return: NetworkX graph
-    """
-    df_ppi = pd.read_csv(ppi_file, sep=sep, header=None, names=ppi_columns)
-    df_ppi.columns = COLUMNS
+    df_ppi = pd.read_csv(ppi_file, sep=sep, header=None)
+    # assert that input columns are 3
+    df_ppi.columns = ppi_columns
 
     df_ppi.Protein1 = df_ppi['Protein1'].str.lower()
     df_ppi.Protein2 = df_ppi['Protein2'].str.lower()
@@ -26,26 +23,41 @@ def construct_graph_from_ppi(ppi_file: str, sep=SEPARATOR, ppi_columns=COLUMNS):
     df_interactions = df_interactions.replace("controls-expression-of", -1)
     df_interactions = df_interactions.replace("controls-state-change-of", -1)
     # replace all other interaction expressions with 0
-    df_interactions.loc[(df_interactions.loc[COLUMNS[1]] != +1) & (df_interactions.loc[COLUMNS[1]] != -1)] = 0
+    # df_interactions.loc[(df_interactions.loc[COLUMNS[1]] != +1) & (df_interactions.loc[COLUMNS[1]] != -1)] = 0
+    df_interactions[COLUMNS[1]].loc[(df_interactions[COLUMNS[1]] != +1)] = 0
+    df_interactions[COLUMNS[1]].loc[(df_interactions[COLUMNS[1]] != -1)] = 0
 
-    G = nx.DiGraph()
+    return df_interactions
+
+
+def construct_graph_from_ppi(ppi_file: str = PPI_FILE, sep:str =SEPARATOR, ppi_columns=COLUMNS):
+    """ Constructs a graph from a given PPI file.
+
+    :param ppi_file: PPI file
+    :param ppi_columns: column names for PPI file
+    :return: NetworkX graph
+    """
+
+    df_interactions = read_ppi_file(ppi_file, sep, ppi_columns)
+
+    graph = nx.DiGraph()
 
     for i in range(len(df_interactions)):
         prot1 = df_interactions.loc[i, COLUMNS[0]]
         prot2 = df_interactions.loc[i, COLUMNS[2]]
         interaction = df_interactions.loc[i, COLUMNS[1]]
-        G.add_node(prot1)
-        G.add_node(prot2)
+        #G.add_node(prot1)
+        #G.add_node(prot2)
 
         # edge attributes
 
-        G.add_edge(prot1, prot2)
-        G[prot1][prot2][RELATION] = interaction
+        graph.add_edge(prot1, prot2, ** {RELATION: interaction})
+        #G[prot1][prot2][RELATION] = interaction
 
-    return G
+    return graph
 
 
-def filter_dgxp(dgxp_file: str, sep=SEPARATOR, dgxp_columns=DGXPCOLUMNS,
+def filter_dgxp(dgxp_file: str = DGXP_FILE, sep: str = SEPARATOR, dgxp_columns=DGXPCOLUMNS,
                 threshold: float = THRESHOLD):
     """
     Filters a DGXP file for fold-change significant genes.
@@ -56,14 +68,18 @@ def filter_dgxp(dgxp_file: str, sep=SEPARATOR, dgxp_columns=DGXPCOLUMNS,
     :return: DataFrame with filtered genes acc. to fold-change
     """
     # node attributes
-
     df_dgxp = pd.read_csv(dgxp_file, sep=sep, header=None, names=dgxp_columns)
     # select only necessary columns
-    df_dgxp = df[['Gene.symbol', 'logFC', 'adj.P.Val']].copy()
+    df_dgxp = df_dgxp[GEO_COLUMNS].copy()
     # change column names accordingly
-    df_dgxp.columns = ["gene", "fold-change", "p-value"]
+    # TODO: make dicionary from dgxp column names to those,, dicionary to constants
+
+    # dictionary for mapping GEO_COLUMNS to DGXPCOLUMNS
+
+
+    df_dgxp.columns = DGXPCOLUMNS
     df_dgxp = df_dgxp.dropna()
-    df_dgxp.gene = df_dgxp['gene'].str.lower()
+    df_dgxp.gene = df_dgxp[GENE].str.lower()
 
     # filter dgxp
 
@@ -74,13 +90,34 @@ def filter_dgxp(dgxp_file: str, sep=SEPARATOR, dgxp_columns=DGXPCOLUMNS,
     df_dgxp_thr_filtered = df_dgxp_pval_filtered.loc[abs(df_dgxp_pval_filtered[DGXPCOLUMNS[1]]) > threshold]
 
     # set fold change labels from float to +1 or -1
-    df_dgxp_thr_filtered['fold-change'].loc[(df_dgxp_thr_filtered[DGXPCOLUMNS[1]] > 0)] = +1
-    df_dgxp_thr_filtered['fold-change'].loc[(df_dgxp_thr_filtered[DGXPCOLUMNS[1]] < 0)] = -1
+    df_dgxp_thr_filtered[FOLD_CHANGE].loc[(df_dgxp_thr_filtered[DGXPCOLUMNS[1]] > 0)] = +1
+    df_dgxp_thr_filtered[FOLD_CHANGE].loc[(df_dgxp_thr_filtered[DGXPCOLUMNS[1]] < 0)] = -1
+
+    # TODO: convert to dictionary
+
 
     return df_dgxp_thr_filtered
 
 
-def set_node_label(graph, dgxp_file: str, sep=SEPARATOR, dgxp_columns=DGXPCOLUMNS,
+
+def create_gene_fold_change_dict(dgxp_file: str = DGXP_FILE, ppi_file: str = PPI_FILE, ppi_columns: str = COLUMNS,
+                                 sep: str = SEPARATOR, dgxp_columns=DGXPCOLUMNS,
+                                threshold: float = THRESHOLD):
+    """Create a dictionary with keys=genes and values=fold-change which is -1 or +1"""
+
+    dgxp_dict = {new: geo for new, geo in zip(DGXPCOLUMNS, GEO_COLUMNS)}
+
+    df_ppi = read_ppi_file(ppi_file, sep, ppi_columns)
+    df_dgxp = filter_dgxp(dgxp_file,sep,dgxp_columns,threshold)
+
+    for prot1 in df_ppi[COLUMNS[0]]:
+        if prot1 in list(df_dgxp[GENE]):
+            dgxp_dict
+
+
+
+def set_node_label(graph, dgxp_file: str = DGXP_FILE, ppi_file: str = PPI_FILE, ppi_columns: str = COLUMNS,
+                   sep=SEPARATOR, dgxp_columns=DGXPCOLUMNS,
                    threshold: float = THRESHOLD):
     """
     Sets the attribute LABEL of nodes according to the fold-change to +1 or -1.
@@ -91,13 +128,17 @@ def set_node_label(graph, dgxp_file: str, sep=SEPARATOR, dgxp_columns=DGXPCOLUMN
     :param dgxp_columns:
     :param graph: NetworkX graph
     """
+    df_ppi = read_ppi_file(ppi_file, sep, ppi_columns)
+
     df = filter_dgxp(dgxp_file, sep, dgxp_columns, threshold)
 
-    if prot1 in list(df['gene']):
-        index = df[df.gene == prot1].index[0]
-        G.nodes[prot1][LABEL] = df.loc[index, ['fold-change']]
-        # print(df_dgxp.loc[index, 'fold-change'])
-        print(f"Label for {prot1} is now {df.loc[index, 'fold-change']}")
+    for prot1 in df_ppi[COLUMNS[0]]:
+
+        if prot1 in list(df[GENE]):
+            index = df[df.gene == prot1.index[0]]
+            graph.nodes[prot1][LABEL] = df_ppi.loc[index, [FOLD_CHANGE]]
+            # print(df_dgxp.loc[index, 'fold-change'])
+            print(f"Label for {prot1} is now {df.loc[index, FOLD_CHANGE]}")
 
     # nodes = df.loc[DGXPCOLUMNS[0]]
     # fold_changes = df.loc[DGXPCOLUMNS[1]]
@@ -110,7 +151,7 @@ def set_node_label(graph, dgxp_file: str, sep=SEPARATOR, dgxp_columns=DGXPCOLUMN
             raise KeyError(f"The node {node} has not been labeled.")
 
 
-def construct_graph(ppi_file: str, dgxp_file: str, sep=SEPARATOR, ppi_columns=COLUMNS,
+def construct_graph(ppi_file: str = PPI_FILE, dgxp_file: str = DGXP_FILE, sep=SEPARATOR, ppi_columns=COLUMNS,
                     dgxp_columns=DGXPCOLUMNS, threshold: float = THRESHOLD):
     """
     Constructs a NetworkX graph.
@@ -134,60 +175,62 @@ def construct_graph(ppi_file: str, dgxp_file: str, sep=SEPARATOR, ppi_columns=CO
     return graph
 
 
-"""
-Randomly assigns labels of [-1,0,1] to nodes in a graph
-Labels:
--1 : Downregulated
-0 : No change
-+1 : Upregulated
 
-Input:
-    - graph : the graph consisting of protein nodes 
-
-Output:
-    - prints list of nodes with associated attribute label
-"""
 
 
 def random_node_labels(graph):
+    """
+    Randomly assigns labels of [-1,0,1] to nodes in a graph
+    Labels:
+    -1 : Downregulated
+    0 : No change
+    +1 : Upregulated
+
+    Input:
+        - graph : the graph consisting of protein nodes
+
+    Output:
+        - prints list of nodes with associated attribute label
+    """
     for node in graph.nodes():
         random_label = random.randint(-1, 1)
         graph.nodes[node][LABEL] = random_label
     print(graph.nodes.data())
 
 
-"""
-Caclulates the shortest path between two nodes.
-
-Input:
-    - graph : NetworkX graph
-    - source : upstream source node
-
-
-Output:
-    - dictionary of shortest path nodes between source node and all other nodes in graph
-"""
 
 
 def shortest_path(graph, source):
+    """
+    Caclulates the shortest path between two nodes.
+
+    Input:
+        - graph : NetworkX graph
+        - source : upstream source node
+
+
+    Output:
+        - dictionary of shortest path nodes between source node and all other nodes in graph
+    """
     # for target in graph.nodes():
     shortest_paths = nx.shortest_path(graph, source)
     return shortest_paths
 
 
-"""
-Check if node labels of source and target node are the same
 
-Input:
-    - graph: NetworkX graph
-    - source: source upstream node
-
-Output:
-    - list of concordant and non-concordant nodes for the source node
-"""
 
 
 def count_concordance(graph: nx.DiGraph, source):
+    """
+    Check if node labels of source and target node are the same
+
+    Input:
+        - graph: NetworkX graph
+        - source: source upstream node
+
+    Output:
+        - list of concordant and non-concordant nodes for the source node
+    """
     same_label = False
 
     nodes_dic = defaultdict(list)
@@ -200,7 +243,7 @@ def count_concordance(graph: nx.DiGraph, source):
 
         # multiply the edge labels
         edge_label = [
-            graph[path_nodes[i]][path_nodes[i + 1]][RELATION] * graph[path_nodes[i]][path_nodes[i + 1]]['relation']
+            graph[path_nodes[i]][path_nodes[i + 1]][RELATION] * graph[path_nodes[i]][path_nodes[i + 1]][RELATION]
             for i in range(len(path_nodes) - 1)]
 
         # edge_label = 1
@@ -225,22 +268,23 @@ def count_concordance(graph: nx.DiGraph, source):
     return nodes_dic
 
 
-"""
-Returns a dictionary of the nodes of the graph with their according
-     - shortest path nodes
-     - concordant nodes
-     - non-concordant nodes
-     - no change nodes
 
-Input:
-    - graph
-
-Output:
-    - dictionary of nodes 
-"""
 
 
 def nodes_dictionary(graph):
+    """
+    Returns a dictionary of the nodes of the graph with their according
+         - shortest path nodes
+         - concordant nodes
+         - non-concordant nodes
+         - no change nodes
+
+    Input:
+        - graph
+
+    Output:
+        - dictionary of nodes
+    """
     dic = {}
     for node in graph.nodes():
         dic[node] = {}
@@ -254,20 +298,21 @@ def nodes_dictionary(graph):
     return dic
 
 
-"""
-Calculates the concordance for an upstream node with its downstream nodes
-Probability of getting at least the number of state changes consistent
-with the direction
-Input:
-    - graph
-    - p : probability of achieving a result
 
-Output:
-    - dictionary of p-values and corrected p-values for concordance
-"""
 
 
 def calculate_concordance(graph, p: float = PROBABILITY):
+    """
+    Calculates the concordance for an upstream node with its downstream nodes
+    Probability of getting at least the number of state changes consistent
+    with the direction
+    Input:
+        - graph
+        - p : probability of achieving a result
+
+    Output:
+        - dictionary of p-values and corrected p-values for concordance
+    """
     concordance_dic = {}
 
     assert 0 <= p <= 1, "p must be within [0,1]"
@@ -279,7 +324,7 @@ def calculate_concordance(graph, p: float = PROBABILITY):
         n = len(shortest_path(graph, hyp_node).keys())
         # k is number of successful predictions
         k = len(count_concordance(graph, hyp_node)[CONCORDANT])
-
+    # TODO: substract no change from n
         bin_coeff = special.binom(n, k)
         concordance = bin_coeff * (p ** k) * (1 - p) ** (n - k)
         concordance_dic[hyp_node] = {}
@@ -293,22 +338,18 @@ def calculate_concordance(graph, p: float = PROBABILITY):
     return concordance_dic
 
 
-"""
-Writes the values for nodes, concordant_nodes, non_concordant_nodes, no_change_nodes, p_val, p_val_corrected to a csv file
 
-Input:
-- graph
-- csv_output : path for output file 
-- p: probability
+def write_concordance_csv(graph, csv_output: str = OUTPUT_FILE, p: float = PROBABILITY):
+    """
+    Writes the values for nodes, concordant_nodes, non_concordant_nodes, no_change_nodes, p_val, p_val_corrected to a csv file
 
-Output:
-- csv file
-
-"""
+    Input:
+    - graph
+    - csv_output : path for output file
+    - p: probability
 
 
-def write_concordance_csv(graph, csv_output: str, p: float = PROBABILITY):
-
+    """
     rows = []
     for node in graph.nodes():
         node_dict = {
@@ -323,7 +364,7 @@ def write_concordance_csv(graph, csv_output: str, p: float = PROBABILITY):
         rows.append(node_dict)
 
     df_ = pd.DataFrame(rows)
-
+    # TODO change output
     df_.to_csv(csv_output)
 
 

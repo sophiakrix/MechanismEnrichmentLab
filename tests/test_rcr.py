@@ -1,14 +1,14 @@
 import unittest
 import os
 import src.rcr.rcr_functions as rcr
-from src.rcr.constants import PPIFILE, DGXPFILE, RELATION, CONCORDANT, NONCONCORDANT, NOCHANGE, PVAL, PVALCORRECTED, TESTOUTPUT, LABEL
+from src.rcr.constants import *
 
 
 class TestRCR(unittest.TestCase):
     """This tests all of the rcr functions."""
 
     def test_construct_graph_from_ppi(self):
-        graph = rcr.construct_graph_from_ppi(PPIFILE)
+        graph = rcr.construct_graph_from_ppi(PPI_FILE)
 
         nodes = list(graph.nodes())
         edges = list(graph.edges())
@@ -38,7 +38,7 @@ class TestRCR(unittest.TestCase):
 
 
     def test_filter_dgxp(self):
-        df = rcr.filter_dgxp(DGXPFILE)
+        df = rcr.filter_dgxp(DGXP_FILE)
 
         # check if df not emtpy
         self.assertFalse(df.empty, msg='The dgpx file is empty or it could not be loaded.')
@@ -53,10 +53,10 @@ class TestRCR(unittest.TestCase):
 
     def test_set_node_label(self):
         graph = rcr.construct_graph_from_ppi(
-            ppi_file=PPIFILE
+            ppi_file=PPI_FILE
         )
 
-        rcr.set_node_label(graph, DGXPFILE)
+        rcr.set_node_label(graph, DGXP_FILE)
 
         for node in graph.nodes():
             self.assertTrue(
@@ -66,7 +66,7 @@ class TestRCR(unittest.TestCase):
 
 
     def test_count_concordance(self):
-        graph = rcr.construct_graph_from_ppi(PPIFILE)
+        graph = rcr.construct_graph_from_ppi(PPI_FILE)
 
         for node in graph.nodes():
             nodes_dic = rcr.count_concordance(graph, node)
@@ -91,7 +91,7 @@ class TestRCR(unittest.TestCase):
                 msg=f'The attribute NOCHANGE of node {node} is not 0.')
 
     def test_calculate_concordance(self):
-        graph = rcr.construct_graph_from_ppi(PPIFILE)
+        graph = rcr.construct_graph_from_ppi(PPI_FILE)
 
         concordance_dic = rcr.calculate_concordance(graph)
 
@@ -123,12 +123,12 @@ class TestRCR(unittest.TestCase):
                 msg=f'The attribute PVALCORRECTED of node {node} is not within [0,1].')
 
     def test_write_concordance_csv(self):
-        graph = rcr.construct_graph_from_ppi(PPIFILE)
+        graph = rcr.construct_graph_from_ppi(PPI_FILE)
 
-        rcr.write_concordance_csv(graph, TESTOUTPUT)
+        rcr.write_concordance_csv(graph, OUTPUT_FILE)
 
         self.asssertTrue(
-            os.path.isfile(TESTOUTPUT),
+            os.path.isfile(OUTPUT_FILE),
             msg='The file could not be created.')
 
 

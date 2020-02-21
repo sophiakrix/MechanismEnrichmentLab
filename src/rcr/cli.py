@@ -6,9 +6,9 @@ import click
 import os
 import networkx as nx
 from .rcr_functions import write_concordance_csv, construct_graph
-from .constants import RCR_DIR, DIRECTORY
+
 from typing import List
-from src.rcr.constants import *
+from .constants import *
 
 ppi_option = click.option(
     '--ppi',
@@ -23,11 +23,16 @@ dgxp_option = click.option(
     type=click.Path(file_okay=True, dir_okay=False, exists=True)
 )
 
+output_option = click.option(
+    '--output',
+    help="Path to output file",
+    type=click.Path(file_okay=True, dir_okay=False, exists=True)
+)
+
 probability_option = click.option(
     '--probability',
     help="Probability of getting at least the number of state changes consistent with the direction",
     type=click.Path(file_okay=True, dir_okay=False, exists=True),
-    required=True
 )
 
 separator_option = click.option(
@@ -69,16 +74,6 @@ def main():
     click.echo("Display all RCR commands.")
 
 
-# child node = main.command()
-#@ppi_option
-#@output_option
-#@main.command()
-#def runrcr(ppi: str, output: str):
-#    """RCR module."""
-#    print(ppi)
-#    print(output)
-
-
 # child node = main.group()
 @main.group()
 def reverse_causal_reasoning():
@@ -97,16 +92,17 @@ def create_graph(ppi: str):
 @ppi_option
 @dgxp_option
 @probability_option
+@output_option
 @separator_option
 @ppi_columns_option
 @dgxp_columns_option
 @threshold_option
-def write_ppi_to_csv(ppi: str, dgxp: str, p: float, sep: str, ppi_columns: List[str, str, str], dgxp_columns: List[str, str, str], threshold: float):
+def write_ppi_to_csv(ppi: str=PPI_FILE, dgxp: str=DGXP_FILE, output: str=OUTPUT_FILE, p: float=PROBABILITY, sep: str=SEPARATOR, ppi_columns: List[str, str, str]=COLUMNS, dgxp_columns: List[str, str, str]=DGXPCOLUMNS, threshold: float=THRESHOLD):
     """ Write the results of concordant nodes and p values to a csv file. """
 
     # TODO take from constants
-    print(f"We want to create a folder here: {PRO}.")
-    print(f"The folder is being created here: {directory}.")
+    print(f"We want to create a folder here: {PROJECT_DIR}.")
+    print(f"The folder is being created here: {OUTPUT_DIR}.")
 
 
 
@@ -115,6 +111,14 @@ def write_ppi_to_csv(ppi: str, dgxp: str, p: float, sep: str, ppi_columns: List[
     # Check if user has given this option because it is now not mandatory '(ppi
     #  split and get the last slash out of the path. strip the format .strip('txt)
     #  OUTPUT_from_constnats.format(NAME)
+
+    # TODO: if output:
+    if ppi != PPI_FILE:
+        name = ppi.split('/')[-1].strip('.txt')
+        output = OUTPUT_FILE.format(name)
+    else:
+        name = PPI_FILE.split('/')[-1].strip('.txt')
+        output = OUTPUT_FILE.format(name)
 
     graph = construct_graph(ppi, dgxp, sep, ppi_columns, dgxp_columns, threshold)
 
