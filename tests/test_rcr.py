@@ -60,9 +60,8 @@ class TestRCR(unittest.TestCase):
 
         for node in graph.nodes():
             self.assertTrue(
-                graph[node][LABEL],
-                [-1, +1],
-                msg=f'The attribute LABEL of node {node} is not within [-1,+1].')
+                graph[node][LABEL] == [-1, +1],
+                msg='The attribute label of node {} is not within [-1,+1].'.format(node))
 
 
     def test_count_concordance(self):
@@ -76,24 +75,21 @@ class TestRCR(unittest.TestCase):
 
             # check if node label CONCORDANCE is within -1, +1
             self.assertTrue(
-                nodes_dic[CONCORDANT],
-                +1,
+                nodes_dic[CONCORDANT] == +1,
                 msg=f'The attribute CONCORDANT of node {node} is not +1.')
 
             self.assertTrue(
-                nodes_dic[NONCONCORDANT],
-                -1,
+                nodes_dic[NONCONCORDANT]== -1,
                 msg=f'The attribute NONCONCORDANT of node {node} is not -1.')
 
             self.assertTrue(
-                nodes_dic[NOCHANGE],
-                0,
+                nodes_dic[NOCHANGE] == 0,
                 msg=f'The attribute NOCHANGE of node {node} is not 0.')
 
     def test_calculate_concordance(self):
         graph = rcr.construct_graph_from_ppi(PPI_FILE)
 
-        concordance_dic = rcr.calculate_concordance(graph)
+        concordance_dic = rcr.calculate_concordance(graph, p=PROBABILITY)
 
         # check if dic is empty
         for node in graph.nodes():

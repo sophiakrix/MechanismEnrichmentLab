@@ -5,10 +5,10 @@
 import click
 import os
 import networkx as nx
-from .rcr_functions import write_concordance_csv, construct_graph
-
+from src.rcr.rcr_functions import write_concordance_csv, construct_graph
 from typing import List
-from .constants import *
+from src.rcr.constants import *
+import wrapt
 
 ppi_option = click.option(
     '--ppi',
@@ -26,46 +26,39 @@ dgxp_option = click.option(
 output_option = click.option(
     '--output',
     help="Path to output file",
-    type=click.Path(file_okay=True, dir_okay=False, exists=True)
+    type=click.Path(file_okay=True, dir_okay=False, exists=False)
 )
 
 probability_option = click.option(
     '--probability',
     help="Probability of getting at least the number of state changes consistent with the direction",
-    type=click.Path(file_okay=True, dir_okay=False, exists=True),
+    type=float
 )
 
 separator_option = click.option(
     '--separator',
     help="Separator for the input file.",
-    type=str,
+    type=str
 )
 
 ppi_columns_option = click.option(
     '--ppicolumns',
     help="Column names of the PPI file",
-    type=List[str, str, str]
+    type=str
 )
 
 dgxp_columns_option = click.option(
     '--dgxpcolumns',
     help="Column names of the DGXP file",
-    type=List[str, str, str]
+    type=str
 )
 
 threshold_option = click.option(
     '--threshold',
     help="The threshold for the fold change of gene expression in the dgxp file to filter by",
-    type=float,
+    type=float
 )
 
-"""output_option = click.option(
-    '--output',
-    help="Path to csv output file that contains concordance values for HYPs",
-    type=click.Path(file_okay=True, dir_okay=False),
-    default=HERE
-)
-"""
 
 # parent node = click.group(), main
 @click.group()
@@ -97,7 +90,7 @@ def create_graph(ppi: str):
 @ppi_columns_option
 @dgxp_columns_option
 @threshold_option
-def write_ppi_to_csv(ppi: str=PPI_FILE, dgxp: str=DGXP_FILE, output: str=OUTPUT_FILE, p: float=PROBABILITY, sep: str=SEPARATOR, ppi_columns: List[str, str, str]=COLUMNS, dgxp_columns: List[str, str, str]=DGXPCOLUMNS, threshold: float=THRESHOLD):
+def write_ppi_to_csv(ppi: str=PPI_FILE, dgxp: str=DGXP_FILE, output: str=OUTPUT_FILE, p: float=PROBABILITY, sep: str=SEPARATOR, ppi_columns: str=COLUMNS, dgxp_columns: str=DGXPCOLUMNS, threshold: float=THRESHOLD):
     """ Write the results of concordant nodes and p values to a csv file.
     :param ppi: PPI file
     :param dgxp: DGXP file
@@ -111,6 +104,15 @@ def write_ppi_to_csv(ppi: str=PPI_FILE, dgxp: str=DGXP_FILE, output: str=OUTPUT_
 
     print(f"We want to create a folder here: {PROJECT_DIR}.")
     print(f"The folder is being created here: {OUTPUT_DIR}.")
+
+    # convert input type string into list for DGXP_COLUMNS and PPI_COLUMNS
+    if ppi_columns:
+        ppi_columns = ppi_columns.split(',')
+
+    if dgxp_columns:
+        dgxp_columns = dgxp_columns.split(',')
+
+
 
     # imaging that output is an option alreadz, check if has been given by the user, if so, use it
     # if not

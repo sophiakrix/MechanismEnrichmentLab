@@ -10,7 +10,7 @@ import pandas as pd
 from scipy import special
 from statsmodels.stats import multitest
 
-from .constants import *
+from src.rcr.constants import *
 
 
 def read_ppi_file(ppi_file: str = PPI_FILE, sep: str = SEPARATOR, ppi_columns=COLUMNS) -> pd.DataFrame:
@@ -55,7 +55,7 @@ def construct_graph_from_ppi(ppi_file: str = PPI_FILE, sep: str = SEPARATOR, ppi
     for i in range(len(df_interactions)):
         prot1 = df_interactions.loc[i, COLUMNS[0]]
         prot2 = df_interactions.loc[i, COLUMNS[2]]
-        interaction = df_interactions.loc[i, COLUMNS[1]]
+        interaction = int(df_interactions.loc[i, COLUMNS[1]])
         # G.add_node(prot1)
         # G.add_node(prot2)
 
@@ -128,7 +128,9 @@ def create_gene_to_fold_change_dict(dgxp_file: str = DGXP_FILE, ppi_file: str = 
     gene_to_fc_dict = {}
 
     for node in df_ppi.COLUMNS[0]:
+        print('Create gene to fc dict',node)
         if node in df_dgxp.index:
+            print(node,' in dg_dgxp index')
             gene_to_fc_dict[node] = {}
             gene_to_fc_dict[node][LABEL] = df_dgxp.loc[node, FOLD_CHANGE]
 

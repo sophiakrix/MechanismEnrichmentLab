@@ -2,7 +2,7 @@
 
 """rcr main."""
 
-from .cli import main
+from src.rcr.cli import main
 
 if __name__ == '__main__':
     main()

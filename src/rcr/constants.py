@@ -9,10 +9,10 @@ RCR_DIR = os.path.abspath(os.path.dirname(__file__))
 SRC_DIR = os.path.abspath(os.path.join(RCR_DIR, os.path.pardir))
 PROJECT_DIR = os.path.abspath(os.path.join(SRC_DIR, os.path.pardir))
 
-DATA_DIR = os.path.join(PROJECT_DIR, "data")
+DATA_DIR = os.path.join(PROJECT_DIR, 'data')
 
-PPI_FILE = os.path.join(DATA_DIR, "example.txt")
-DGXP_FILE = os.path.join(DATA_DIR, "example_dgxp.txt")
+PPI_FILE = os.path.join(DATA_DIR, 'example.txt')
+DGXP_FILE = os.path.join(DATA_DIR, 'example_dgxp.txt')
 
 OUTPUT_DIR = os.path.join(PROJECT_DIR, "output")
 
@@ -21,8 +21,8 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, '{}_results.csv')
 
 INDEX = 'index'
-COLUMNS = ["Protein1", "interaction", "Protein2"]
-DGXPCOLUMNS = ["fold-change", "p-value"]
+COLUMNS = ['Protein1', "interaction", 'Protein2']
+DGXPCOLUMNS = ['fold-change', 'p-value']
 GEO_COLUMNS = ['logFC', 'adj.P.Val']
 GENE = 'gene'
 FOLD_CHANGE = 'fold-change'
