@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-
-"""This module contains all functions used in the RCR command line interface."""
-
 import random
 from collections import defaultdict
 
@@ -13,14 +9,8 @@ from statsmodels.stats import multitest
 from .constants import *
 
 
-def read_ppi_file(ppi_file: str = PPI_FILE, sep: str = SEPARATOR, ppi_columns=COLUMNS) -> pd.DataFrame:
-    """Read in a PPI file and replace interaction with activate (+1) or deactivate (-1). 
-    
-    :param ppi_file: PPI File
-    :param sep: separator
-    :param ppi_columns: PPI column names 
-    :return: dataframe with interactions
-    """
+def read_ppi_file(ppi_file: str = PPI_FILE, sep: str = SEPARATOR, ppi_columns=COLUMNS):
+    """Reads in ppi file."""
 
     df_ppi = pd.read_csv(ppi_file, sep=sep, header=None)
     # assert that input columns are 3
@@ -40,8 +30,8 @@ def read_ppi_file(ppi_file: str = PPI_FILE, sep: str = SEPARATOR, ppi_columns=CO
     return df_interactions
 
 
-def construct_graph_from_ppi(ppi_file: str = PPI_FILE, sep: str = SEPARATOR, ppi_columns=COLUMNS) -> nx.DiGraph:
-    """ Construct a graph from a given PPI file.
+def construct_graph_from_ppi(ppi_file: str = PPI_FILE, sep:str =SEPARATOR, ppi_columns=COLUMNS):
+    """ Constructs a graph from a given PPI file.
 
     :param ppi_file: PPI file
     :param ppi_columns: column names for PPI file
@@ -56,21 +46,21 @@ def construct_graph_from_ppi(ppi_file: str = PPI_FILE, sep: str = SEPARATOR, ppi
         prot1 = df_interactions.loc[i, COLUMNS[0]]
         prot2 = df_interactions.loc[i, COLUMNS[2]]
         interaction = df_interactions.loc[i, COLUMNS[1]]
-        # G.add_node(prot1)
-        # G.add_node(prot2)
+        #G.add_node(prot1)
+        #G.add_node(prot2)
 
         # edge attributes
 
-        graph.add_edge(prot1, prot2, **{RELATION: interaction})
-        # G[prot1][prot2][RELATION] = interaction
+        graph.add_edge(prot1, prot2, ** {RELATION: interaction})
+        #G[prot1][prot2][RELATION] = interaction
 
     return graph
 
 
 def filter_dgxp(dgxp_file: str = DGXP_FILE, sep: str = SEPARATOR, dgxp_columns=DGXPCOLUMNS,
-                threshold: float = THRESHOLD) -> pd.DataFrame:
+                threshold: float = THRESHOLD):
     """
-    Filter a DGXP file for fold-change significant genes.
+    Filters a DGXP file for fold-change significant genes.
 
     :param dgxp_file: DGXP file
     :param dgxp_columns: column names for DGXP file
@@ -78,68 +68,37 @@ def filter_dgxp(dgxp_file: str = DGXP_FILE, sep: str = SEPARATOR, dgxp_columns=D
     :return: DataFrame with filtered genes acc. to fold-change
     """
     # node attributes
-    df_dgxp = pd.read_csv(dgxp_file, sep=sep, header=None, names=dgxp_columns, index_col=DGXPCOLUMNS[0])
+    # TODO move to constants
+    df_dgxp = pd.read_csv(dgxp_file, sep=sep, header=None, names=dgxp_columns)
     # select only necessary columns
-    df_dgxp = df_dgxp[GEO_COLUMNS].copy()
+    df_dgxp = df_dgxp[['Gene.symbol', 'logFC', 'adj.P.Val']].copy()
     # change column names accordingly
-
-    # make dictionary from dgxp column names to those, dictionary to constants
-
-    # dictionary for mapping GEO_COLUMNS to DGXPCOLUMNS
-
-    df_dgxp.columns = DGXPCOLUMNS
+    # TODO: make dicionary from dgxp column names to those,, dicionary to constants
+    df_dgxp.columns = ["gene", "fold-change", "p-value"]
     df_dgxp = df_dgxp.dropna()
-    df_dgxp.index = df_dgxp[INDEX].str.lower()
+    df_dgxp.gene = df_dgxp['gene'].str.lower()
 
     # filter dgxp
 
     # filter nodes with p-value < 0.05
-    df_dgxp_pval_filtered = df_dgxp.loc[df_dgxp[DGXPCOLUMNS[1]] < PVALUE]
+    df_dgxp_pval_filtered = df_dgxp.loc[df_dgxp[DGXPCOLUMNS[2]] < PVALUE]
 
     # filter nodes with threshold (given by user)
-    df_dgxp_thr_filtered = df_dgxp_pval_filtered.loc[abs(df_dgxp_pval_filtered[DGXPCOLUMNS[0]]) > threshold]
+    df_dgxp_thr_filtered = df_dgxp_pval_filtered.loc[abs(df_dgxp_pval_filtered[DGXPCOLUMNS[1]]) > threshold]
 
     # set fold change labels from float to +1 or -1
-    df_dgxp_thr_filtered[FOLD_CHANGE].loc[(df_dgxp_thr_filtered[DGXPCOLUMNS[0]] > 0)] = +1
-    df_dgxp_thr_filtered[FOLD_CHANGE].loc[(df_dgxp_thr_filtered[DGXPCOLUMNS[0]] < 0)] = -1
+    df_dgxp_thr_filtered['fold-change'].loc[(df_dgxp_thr_filtered[DGXPCOLUMNS[1]] > 0)] = +1
+    df_dgxp_thr_filtered['fold-change'].loc[(df_dgxp_thr_filtered[DGXPCOLUMNS[1]] < 0)] = -1
 
+    # TODO: convert to dictionary
     return df_dgxp_thr_filtered
 
 
-def create_gene_to_fold_change_dict(dgxp_file: str = DGXP_FILE, ppi_file: str = PPI_FILE, ppi_columns=COLUMNS,
-                                    sep: str = SEPARATOR, dgxp_columns=DGXPCOLUMNS,
-                                    threshold: float = THRESHOLD) -> dict:
-    """Create a dictionary that is mapping the genes in the PPI_FILE to the genes in the DGXP file and take
-    key = gene,
-    value = the value of the fold-change of the dgxp file
-    :param dgxp_file: DGXP file
-    :param ppi_file: PPI file
-    :param ppi_columns: PPI column names
-    :param sep: separator
-    :param dgxp_columns: DGXP column names
-    :param threshold: threshold for fold change
-    :return: dictionary
-    """
-
-    df_dgxp = filter_dgxp(dgxp_file, sep, dgxp_columns, threshold)
-
-    df_ppi = read_ppi_file(ppi_file, sep, ppi_columns)
-
-    gene_to_fc_dict = {}
-
-    for node in df_ppi.COLUMNS[0]:
-        if node in df_dgxp.index:
-            gene_to_fc_dict[node] = {}
-            gene_to_fc_dict[node][LABEL] = df_dgxp.loc[node, FOLD_CHANGE]
-
-    return gene_to_fc_dict
-
-
-def set_node_label(graph: nx.DiGraph, dgxp_file: str = DGXP_FILE, ppi_file: str = PPI_FILE, ppi_columns: str = COLUMNS,
+def set_node_label(graph, dgxp_file: str = DGXP_FILE, ppi_file: str = PPI_FILE, ppi_columns: str = COLUMNS,
                    sep=SEPARATOR, dgxp_columns=DGXPCOLUMNS,
                    threshold: float = THRESHOLD):
     """
-    Set the attribute LABEL of nodes according to the fold-change to +1 or -1.
+    Sets the attribute LABEL of nodes according to the fold-change to +1 or -1.
 
     :param dgxp_file:
     :param sep:
@@ -147,16 +106,23 @@ def set_node_label(graph: nx.DiGraph, dgxp_file: str = DGXP_FILE, ppi_file: str 
     :param dgxp_columns:
     :param graph: NetworkX graph
     """
+    df_ppi = read_ppi_file(ppi_file, sep, ppi_columns)
 
-    gene_to_fc_dict = create_gene_to_fold_change_dict(dgxp_file, ppi_file, ppi_columns, sep, dgxp_columns, threshold)
+    df = filter_dgxp(dgxp_file, sep, dgxp_columns, threshold)
 
-    # create a container of tuples to add nodes with label fold change to graph
-    all_tup = []
+    for prot1 in df_ppi[COLUMNS[0]]:
 
-    for node, attr_dict in gene_to_fc_dict.items():
-        tup = (node, attr_dict)
-        all_tup.append(tup)
-        graph.add_nodes_from(nodes_for_adding=all_tup)
+        if prot1 in list(df['gene']):
+            index = df[df.gene == prot1.index[0]]
+            graph.nodes[prot1][LABEL] = df_ppi.loc[index, ['fold-change']]
+            # print(df_dgxp.loc[index, 'fold-change'])
+            print(f"Label for {prot1} is now {df.loc[index, 'fold-change']}")
+
+    # nodes = df.loc[DGXPCOLUMNS[0]]
+    # fold_changes = df.loc[DGXPCOLUMNS[1]]
+    # node_label_dic = {node: label for (node, label) in zip(nodes, fold_changes)}
+
+    # nx.set_node_attributes(graph, node_label_dic, name=LABEL)
 
     for node in graph.nodes():
         if graph[node][LABEL] is None:
@@ -164,17 +130,16 @@ def set_node_label(graph: nx.DiGraph, dgxp_file: str = DGXP_FILE, ppi_file: str 
 
 
 def construct_graph(ppi_file: str = PPI_FILE, dgxp_file: str = DGXP_FILE, sep=SEPARATOR, ppi_columns=COLUMNS,
-                    dgxp_columns=DGXPCOLUMNS, threshold: float = THRESHOLD) -> nx.DiGraph:
+                    dgxp_columns=DGXPCOLUMNS, threshold: float = THRESHOLD):
     """
-    Construct a NetworkX graph.
-
-    :param ppi_file: tsv file about PPI
-    :param dgxp_file: tsv file about differential gene expression
-    :param sep:
-    :param ppi_columns: list of columns names of PPI file
-    :param dgxp_columns: list of column names of DGXP file
-    :param threshold:
-    :return: NetworkX graph
+    Constructs a NetworkX graph.
+        :param ppi_file: tsv file about PPI
+        :param dgxp_file: tsv file about differential gene expression
+        :param sep:
+        :param ppi_columns: list of columns names of PPI file
+        :param dgxp_columns: list of column names of DGXP file
+        :param threshold:
+        :return: NetworkX graph
     """
     # construct the graph
     graph = construct_graph_from_ppi(ppi_file, sep, ppi_columns)
@@ -188,6 +153,9 @@ def construct_graph(ppi_file: str = PPI_FILE, dgxp_file: str = DGXP_FILE, sep=SE
     return graph
 
 
+
+
+
 def random_node_labels(graph):
     """
     Randomly assigns labels of [-1,0,1] to nodes in a graph
@@ -196,7 +164,11 @@ def random_node_labels(graph):
     0 : No change
     +1 : Upregulated
 
-    :param graph: the graph consisting of protein nodes
+    Input:
+        - graph : the graph consisting of protein nodes
+
+    Output:
+        - prints list of nodes with associated attribute label
     """
     for node in graph.nodes():
         random_label = random.randint(-1, 1)
@@ -204,27 +176,38 @@ def random_node_labels(graph):
     print(graph.nodes.data())
 
 
-def shortest_path(graph, source) -> dict:
+
+
+def shortest_path(graph, source):
     """
     Caclulates the shortest path between two nodes.
 
-    :param graph: NetworkX graph
-    :param source: upstream source node
-    :return: dictionary of shortest path nodes between source node and all other nodes in graph
+    Input:
+        - graph : NetworkX graph
+        - source : upstream source node
+
+
+    Output:
+        - dictionary of shortest path nodes between source node and all other nodes in graph
     """
     # for target in graph.nodes():
     shortest_paths = nx.shortest_path(graph, source)
     return shortest_paths
 
 
-def count_concordance(graph: nx.DiGraph, source) -> dict:
-    """
-    Check if node labels of source and target node are the same and return dictionary with
-    concordant, non-concordant and no change nodes.
 
-    :param graph: NetworkX graph
-    :param source: source upstream node
-    :return: dictionary of concordant, non-concordant and no change nodes for the source node
+
+
+def count_concordance(graph: nx.DiGraph, source):
+    """
+    Check if node labels of source and target node are the same
+
+    Input:
+        - graph: NetworkX graph
+        - source: source upstream node
+
+    Output:
+        - list of concordant and non-concordant nodes for the source node
     """
     same_label = False
 
@@ -238,7 +221,7 @@ def count_concordance(graph: nx.DiGraph, source) -> dict:
 
         # multiply the edge labels
         edge_label = [
-            graph[path_nodes[i]][path_nodes[i + 1]][RELATION] * graph[path_nodes[i]][path_nodes[i + 1]][RELATION]
+            graph[path_nodes[i]][path_nodes[i + 1]][RELATION] * graph[path_nodes[i]][path_nodes[i + 1]]['relation']
             for i in range(len(path_nodes) - 1)]
 
         # edge_label = 1
@@ -263,16 +246,22 @@ def count_concordance(graph: nx.DiGraph, source) -> dict:
     return nodes_dic
 
 
-def nodes_dictionary(graph) -> nx.DiGraph:
+
+
+
+def nodes_dictionary(graph):
     """
-    Return a dictionary of the nodes of the graph with their according
+    Returns a dictionary of the nodes of the graph with their according
          - shortest path nodes
          - concordant nodes
          - non-concordant nodes
          - no change nodes
 
-    :param graph: NetworkX graph
-    :return: dictionary of nodes
+    Input:
+        - graph
+
+    Output:
+        - dictionary of nodes
     """
     dic = {}
     for node in graph.nodes():
@@ -287,15 +276,20 @@ def nodes_dictionary(graph) -> nx.DiGraph:
     return dic
 
 
-def calculate_concordance(graph, p: float = PROBABILITY) -> dict:
+
+
+
+def calculate_concordance(graph, p: float = PROBABILITY):
     """
     Calculates the concordance for an upstream node with its downstream nodes
     Probability of getting at least the number of state changes consistent
     with the direction
+    Input:
+        - graph
+        - p : probability of achieving a result
 
-    :param graph: NetworkX graph
-    :param p: probability of achieving a result
-    :return: dictionary of p-values and corrected p-values for concordance
+    Output:
+        - dictionary of p-values and corrected p-values for concordance
     """
     concordance_dic = {}
 
@@ -304,13 +298,11 @@ def calculate_concordance(graph, p: float = PROBABILITY) -> dict:
     for hyp_node in graph.nodes():
         if hyp_node not in graph.nodes():
             raise ValueError(f"The node {hyp_node} is not in the graph.")
-        # n is number of trials - nochange
-        all = len(shortest_path(graph, hyp_node).keys())
-        no_change = len(count_concordance(graph, hyp_node)[NOCHANGE])
-        n = all - no_change
+        # n is number of trials
+        n = len(shortest_path(graph, hyp_node).keys())
         # k is number of successful predictions
         k = len(count_concordance(graph, hyp_node)[CONCORDANT])
-
+    # TODO: substract no change from n
         bin_coeff = special.binom(n, k)
         concordance = bin_coeff * (p ** k) * (1 - p) ** (n - k)
         concordance_dic[hyp_node] = {}
@@ -324,13 +316,17 @@ def calculate_concordance(graph, p: float = PROBABILITY) -> dict:
     return concordance_dic
 
 
+
 def write_concordance_csv(graph, csv_output: str = OUTPUT_FILE, p: float = PROBABILITY):
     """
-    Write the values for nodes, concordant_nodes, non_concordant_nodes, no_change_nodes, p_val, p_val_corrected to a csv file
+    Writes the values for nodes, concordant_nodes, non_concordant_nodes, no_change_nodes, p_val, p_val_corrected to a csv file
 
-    :param graph: NetworkX graph
-    :param csv_output: path for output file
-    :param p: probability of achieving a result
+    Input:
+    - graph
+    - csv_output : path for output file
+    - p: probability
+
+
     """
     rows = []
     for node in graph.nodes():
@@ -346,4 +342,32 @@ def write_concordance_csv(graph, csv_output: str = OUTPUT_FILE, p: float = PROBA
         rows.append(node_dict)
 
     df_ = pd.DataFrame(rows)
+    # TODO change output
     df_.to_csv(csv_output)
+
+
+"""
+
+if __name__ == '__main__':
+
+    file = "/Users/sophiakrix/git/MechanismEnrichmentLab/example.txt"
+    # Create parser
+    #parser = argparse.ArgumentParser(description='csv file with Protein1, interaction and Protein2 information')
+
+    # Execute the parse_args() method
+    #args = parser.parse_args()
+    #file = args.Path
+
+    if not os.path.exists(file):
+        raise IOError('The path specified does not exist')
+
+    #file = sys.argv[1]
+
+    # TODO: csv_output argument
+
+    g = construct_graph(file)
+
+    print(f"The concordance of each HYP node of the graph is as follows: ")
+
+    write_concordance_csv(g,csv_output)
+"""

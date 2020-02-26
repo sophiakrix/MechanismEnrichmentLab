@@ -98,19 +98,13 @@ def create_graph(ppi: str):
 @dgxp_columns_option
 @threshold_option
 def write_ppi_to_csv(ppi: str=PPI_FILE, dgxp: str=DGXP_FILE, output: str=OUTPUT_FILE, p: float=PROBABILITY, sep: str=SEPARATOR, ppi_columns: List[str, str, str]=COLUMNS, dgxp_columns: List[str, str, str]=DGXPCOLUMNS, threshold: float=THRESHOLD):
-    """ Write the results of concordant nodes and p values to a csv file.
-    :param ppi: PPI file
-    :param dgxp: DGXP file
-    :param output: output path
-    :param p: probability
-    :param sep: separator
-    :param ppi_columns: PPI column names
-    :param dgxp_columns: DGXP column names
-    :param threshold: threshold for fold-change
-    """
+    """ Write the results of concordant nodes and p values to a csv file. """
 
+    # TODO take from constants
     print(f"We want to create a folder here: {PROJECT_DIR}.")
     print(f"The folder is being created here: {OUTPUT_DIR}.")
+
+
 
     # imaging that output is an option alreadz, check if has been given by the user, if so, use it
     # if not
@@ -118,15 +112,11 @@ def write_ppi_to_csv(ppi: str=PPI_FILE, dgxp: str=DGXP_FILE, output: str=OUTPUT_
     #  split and get the last slash out of the path. strip the format .strip('txt)
     #  OUTPUT_from_constnats.format(NAME)
 
-    # if user gives a specific output
-    if output:
-        output = OUTPUT_FILE.format(output)
-    # if user does not give an output use ppi file name for output
-    elif output == OUTPUT_FILE:
+    # TODO: if output:
+    if ppi != PPI_FILE:
         name = ppi.split('/')[-1].strip('.txt')
         output = OUTPUT_FILE.format(name)
-    # if user does not give an input file use default PPI_FILE and OUTPUT_FILE
-    elif ppi == PPI_FILE:
+    else:
         name = PPI_FILE.split('/')[-1].strip('.txt')
         output = OUTPUT_FILE.format(name)
 

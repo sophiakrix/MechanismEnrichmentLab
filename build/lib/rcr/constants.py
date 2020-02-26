@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-"""This module contains all the constants used in RCR package."""
-
 import os
+
+"""This module contains all the constants used in RCR package."""
 
 RELATION = 'relation'
 RCR_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -20,12 +20,8 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, '{}_results.csv')
 
-INDEX = 'index'
 COLUMNS = ["Protein1", "interaction", "Protein2"]
-DGXPCOLUMNS = ["fold-change", "p-value"]
-GEO_COLUMNS = ['logFC', 'adj.P.Val']
-GENE = 'gene'
-FOLD_CHANGE = 'fold-change'
+DGXPCOLUMNS = ["gene", "fold-change", "p-value"]
 SEPARATOR = '\t'
 LABEL = 'label'
 CONCORDANCE = 'concordance'

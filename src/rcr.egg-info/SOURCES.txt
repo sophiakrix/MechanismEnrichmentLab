@@ -4,6 +4,7 @@ setup.py
 src/rcr/__init__.py
 src/rcr/__main__.py
 src/rcr/cli.py
+src/rcr/constants.py
 src/rcr/rcr_functions.py
 src/rcr.egg-info/PKG-INFO
 src/rcr.egg-info/SOURCES.txt
