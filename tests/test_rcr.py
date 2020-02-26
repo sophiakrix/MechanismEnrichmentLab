@@ -123,7 +123,7 @@ class TestRCR(unittest.TestCase):
 
         rcr.write_concordance_csv(graph, OUTPUT_FILE)
 
-        self.asssertTrue(
+        self.assertTrue(
             os.path.isfile(OUTPUT_FILE),
             msg='The file could not be created.')
 
