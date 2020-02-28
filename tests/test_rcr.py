@@ -46,7 +46,7 @@ class TestRCR(unittest.TestCase):
         # check if column 'interaction' has label in [-1,+1]
         for index, row in df.iterrows():
             self.assertIn(
-                row[1],
+                row[2],
                 [-1, +1],
                 msg=f'The gene at index {index} does not have a fold-change within [-1, +1].')
 

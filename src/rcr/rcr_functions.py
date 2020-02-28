@@ -78,7 +78,10 @@ def filter_dgxp(dgxp_file: str = DGXP_FILE, sep: str = SEPARATOR, dgxp_columns=D
     :return: DataFrame with filtered genes acc. to fold-change
     """
     # node attributes
-    df_dgxp = pd.read_csv(dgxp_file, sep=sep, header=None, names=dgxp_columns, index_col=DGXPCOLUMNS[0])
+    df_dgxp = pd.read_csv(dgxp_file, sep=sep, index_col=GENE_GEO_COLUMN)
+
+    #  header=None, names = dgxp_columns ?
+
     # select only necessary columns
     df_dgxp = df_dgxp[GEO_COLUMNS].copy()
     # change column names accordingly
@@ -89,7 +92,7 @@ def filter_dgxp(dgxp_file: str = DGXP_FILE, sep: str = SEPARATOR, dgxp_columns=D
 
     df_dgxp.columns = DGXPCOLUMNS
     df_dgxp = df_dgxp.dropna()
-    df_dgxp.index = df_dgxp[INDEX].str.lower()
+    df_dgxp.index = df_dgxp.index.str.lower()
 
     # filter dgxp
 
@@ -100,8 +103,13 @@ def filter_dgxp(dgxp_file: str = DGXP_FILE, sep: str = SEPARATOR, dgxp_columns=D
     df_dgxp_thr_filtered = df_dgxp_pval_filtered.loc[abs(df_dgxp_pval_filtered[DGXPCOLUMNS[0]]) > threshold]
 
     # set fold change labels from float to +1 or -1
-    df_dgxp_thr_filtered[FOLD_CHANGE].loc[(df_dgxp_thr_filtered[DGXPCOLUMNS[0]] > 0)] = +1
-    df_dgxp_thr_filtered[FOLD_CHANGE].loc[(df_dgxp_thr_filtered[DGXPCOLUMNS[0]] < 0)] = -1
+    df_dgxp_thr_filtered[FOLD_CHANGE_POSNEG] = df_dgxp_thr_filtered[FOLD_CHANGE].apply(lambda x: +1 if x > 0 else -1)
+
+    #df_dgxp_thr_filtered.loc[df_dgxp_thr_filtered[DGXPCOLUMNS[0]] > 0, FOLD_CHANGE_POSNEG] = +1
+    #df_dgxp_thr_filtered.loc[df_dgxp_thr_filtered[DGXPCOLUMNS[0]] < 0, FOLD_CHANGE_POSNEG] = -1
+
+    #df_dgxp_thr_filtered[FOLD_CHANGE].loc[(df_dgxp_thr_filtered[DGXPCOLUMNS[0]] > 0)] = +1
+    #df_dgxp_thr_filtered[FOLD_CHANGE].loc[(df_dgxp_thr_filtered[DGXPCOLUMNS[0]] < 0)] = -1
 
     return df_dgxp_thr_filtered
 
@@ -132,14 +140,14 @@ def create_gene_to_fold_change_dict(dgxp_file: str = DGXP_FILE, ppi_file: str = 
         if node in df_dgxp.index:
             print(node,' in dg_dgxp index')
             gene_to_fc_dict[node] = {}
-            gene_to_fc_dict[node][LABEL] = df_dgxp.loc[node, FOLD_CHANGE]
+            gene_to_fc_dict[node][LABEL] = df_dgxp.loc[node, FOLD_CHANGE_POSNEG]
 
     return gene_to_fc_dict
 
 
 def set_node_label(graph: nx.DiGraph, dgxp_file: str = DGXP_FILE, ppi_file: str = PPI_FILE, ppi_columns: str = COLUMNS,
                    sep=SEPARATOR, dgxp_columns=DGXPCOLUMNS,
-                   threshold: float = THRESHOLD):
+                   threshold: float = THRESHOLD) -> nx.DiGraph:
     """
     Set the attribute LABEL of nodes according to the fold-change to +1 or -1.
 
@@ -148,6 +156,7 @@ def set_node_label(graph: nx.DiGraph, dgxp_file: str = DGXP_FILE, ppi_file: str 
     :param threshold:
     :param dgxp_columns:
     :param graph: NetworkX graph
+    :return: graph
     """
 
     gene_to_fc_dict = create_gene_to_fold_change_dict(dgxp_file, ppi_file, ppi_columns, sep, dgxp_columns, threshold)
@@ -163,6 +172,9 @@ def set_node_label(graph: nx.DiGraph, dgxp_file: str = DGXP_FILE, ppi_file: str 
     for node in graph.nodes():
         if graph[node][LABEL] is None:
             raise KeyError(f"The node {node} has not been labeled.")
+
+    return graph
+
 
 
 def construct_graph(ppi_file: str = PPI_FILE, dgxp_file: str = DGXP_FILE, sep=SEPARATOR, ppi_columns=COLUMNS,
@@ -181,13 +193,10 @@ def construct_graph(ppi_file: str = PPI_FILE, dgxp_file: str = DGXP_FILE, sep=SE
     # construct the graph
     graph = construct_graph_from_ppi(ppi_file, sep, ppi_columns)
 
-    # filter relevant fold change nodes
-    filtered_dgxp_file = filter_dgxp(dgxp_file, sep, dgxp_columns, threshold)
-
     # label nodes as up- or -downregulated
-    set_node_label(graph, dgxp_file, sep, dgxp_columns, threshold)
+    node_labeled_graph = set_node_label(graph, dgxp_file, sep, dgxp_columns, threshold)
 
-    return graph
+    return node_labeled_graph
 
 
 def random_node_labels(graph):
